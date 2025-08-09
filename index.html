@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Easy Cash</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <style>
+        :root{--primary:#8338EC;--secondary:#5E52F6;--bg:#121212;--card-bg:#1E1E1E;--text-primary:#EAEAEA;--text-secondary:#A0A0A0;--green:#05F29B;}
+        body{margin:0;font-family:'Poppins',sans-serif;background:var(--bg);color:var(--text-primary);height:100vh;overflow:hidden;}
+        .container{height:100%;display:flex;flex-direction:column;max-width:480px;margin:0 auto;}
+        header{padding:12px 20px;display:flex;align-items:center;gap:12px;background:rgba(30,30,30,0.7);backdrop-filter:blur(10px);position:sticky;top:0;z-index:100;}
+        main{flex-grow:1;overflow-y:auto;padding:20px 20px 90px;}
+        .view{display:none;} .view.active{display:block; animation: fadeIn 0.3s;}
+        @keyframes fadeIn{from{opacity:0} to{opacity:1}}
+        .card{background:var(--card-bg);border-radius:20px;padding:20px;margin-bottom:20px;}
+        .btn{padding:16px;border-radius:12px;border:none;cursor:pointer;font-weight:600;font-size:18px;width:100%;}
+        .btn-primary{background:linear-gradient(90deg,var(--secondary),var(--primary));color:white;}
+        .task{display:flex;align-items:center;gap:15px;background:rgba(255,255,255,0.05);padding:15px;border-radius:15px;margin-bottom:15px;cursor:pointer; transition: transform 0.2s;}
+        .task:active{transform: scale(0.97);}
+        .task .icon-container{width:50px;height:50px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--secondary),var(--primary));}
+        .task[disabled]{opacity:0.5;cursor:not-allowed;}
+        .footer-nav{position:fixed;bottom:0;left:0;right:0;width:100%;max-width:480px;margin:0 auto;display:flex;justify-content:space-around;background:var(--card-bg);padding:10px 0; border-top: 1px solid rgba(255,255,255,0.1);}
+        .nav-button{display:flex;flex-direction:column;align-items:center;color:var(--text-secondary);background:0;border:0;font-size:12px;cursor:pointer; flex-grow:1; gap: 5px;}
+        .nav-button.active{color:var(--primary);}
+        #toast{position:fixed;bottom:-100px;left:50%;transform:translateX(-50%);background:#28a745;color:white;padding:12px 25px;border-radius:10px;z-index:1001;transition:bottom 0.5s;}
+        #toast.show{bottom:100px;}
+        .form-group{margin-bottom:15px;}
+        .form-group label{font-size:14px; color: var(--text-secondary); margin-bottom:8px; display:block;}
+        .form-group input, .form-group select{width:100%; padding:14px; background:#2a2a2a; border:1px solid var(--border-color); color:white; border-radius:10px;}
+    </style>
+</head>
+<body>
+    <div id="loader" style="display:flex;height:100%;align-items:center;justify-content:center;"><div class="spinner"></div><p id="loader-text" style="margin-top: 20px; color: var(--text-secondary);">Loading...</p></div>
+    <div id="toast"></div>
+    <div class="container" style="display:none;">
+        <header>
+            <img id="header-avatar" style="width:38px;height:38px;border-radius:50%;" src="">
+            <div>
+                <h3 id="header-username" style="margin:0;font-size:16px;"></h3>
+                <p id="header-balance" style="margin:0;font-size:13px;color:var(--green);"></p>
+            </div>
+        </header>
+        <div style="background:linear-gradient(90deg,var(--secondary),var(--primary));color:white;padding:8px 0;white-space:nowrap;overflow:hidden;">
+            <p id="admin-marquee" style="display:inline-block;padding-left:100%;animation:marquee 20s linear infinite;"></p>
+        </div>
+        <main>
+            <div id="home-view" class="view active"></div>
+            <div id="earn-view" class="view"></div>
+            <div id="withdraw-view" class="view"></div>
+            <div id="profile-view" class="view"></div>
+        </main>
+        <nav class="footer-nav">
+            <button class="nav-button active" onclick="showView('home')"><i class="fas fa-home"></i><span data-lang="nav_home"></span></button>
+            <button class="nav-button" onclick="showView('earn')"><i class="fas fa-tasks"></i><span data-lang="nav_earn"></span></button>
+            <button class="nav-button" onclick="showView('withdraw')"><i class="fas fa-wallet"></i><span data-lang="nav_withdraw"></span></button>
+            <button class="nav-button" onclick="showView('profile')"><i class="fas fa-user-circle"></i><span data-lang="nav_profile"></span></button>
+        </nav>
+    </div>
+    
+    <script>
+        // --- Firebase Configuration START ---
+        const FIREBASE_CONFIG = {
+          apiKey: "AIzaSyBxGH-n_cQMooeZ6Rb8n-PJBgXw_6LVxrY",
+          authDomain: "e-commerce-dbbfa.firebaseapp.com",
+          databaseURL: "https://e-commerce-dbbfa-default-rtdb.firebaseio.com",
+          projectId: "e-commerce-dbbfa",
+          storageBucket: "e-commerce-dbbfa.firebasestorage.app",
+          messagingSenderId: "1881030011",
+          appId: "1:1881030011:web:42019bbc1fff74302311de",
+          measurementId: "G-ZCL907CJ8W"
+        };
+        // --- Firebase Configuration END ---
+
+        // --- AD CONFIGURATION START ---
+        // Replace with your Gigapub or other ad network Zone IDs
+        const AD_ZONES = {
+            interstitial: "9574416", // Your Rewarded Interstitial Zone ID
+            popup: "9574417",        // Your Rewarded Popup Zone ID
+        };
+        const AD_LIMITS = { interstitial: 50, popup: 100 }; // Daily limits per user
+
+        // --- USER ENGAGEMENT START ---
+        const ENGAGEMENT_FEATURES = {
+            daily_bonus: { enabled: true, reward: 0.005 }, // Reward in USD
+            referral_system: { enabled: true, reward_per_referral: 0.01 } // Reward in USD
+        };
+
+        // --- WITHDRAWAL SETTINGS START ---
+        const WITHDRAWAL_SETTINGS = {
+            fee_percentage: 5 // Withdrawal fee in percentage (e.g., 5 for 5%). Set to 0 to disable.
+        };
+
+        // --- BOT SETTINGS START ---
+        const BOT_USERNAME = "@Watchandearin099_bot"; // Your bot's username
+
+        // --- LANGUAGE STRINGS START ---
+        const LANG = {
+            // General
+            loading: "Memuat...",
+            balance: "Saldo",
+            tasks_completed: "Tugas Selesai",
+
+            // Home View
+            home_welcome: "Selamat datang!",
+            total_balance: "Total Saldo Anda",
+            earn_now: "Hasilkan Sekarang",
+
+            // Earn View
+            task_center: "Pusat Tugas",
+            task_center_subtitle: "Selesaikan tugas untuk mendapatkan hadiah.",
+            interstitial_task_title: "Tonton Iklan Video",
+            interstitial_task_desc: "Tersisa hari ini",
+            popup_task_title: "Iklan Pop-up",
+            popup_task_desc: "Tersisa hari ini",
+            daily_bonus_title: "Bonus Login Harian",
+            daily_bonus_desc: "Klaim hadiah harian Anda!",
+            daily_bonus_claimed: "Sudah diklaim hari ini",
+
+            // Withdraw View
+            withdraw_funds: "Tarik Saldo",
+            current_balance: "Saldo Anda Saat Ini:",
+            payment_method: "Metode Pembayaran",
+            select_method: "Pilih Metode",
+            amount_usd: "Jumlah (USD)",
+            enter_amount: "Masukkan jumlah",
+            wallet_address: "Alamat Wallet",
+            enter_wallet_address: "Masukkan alamat wallet",
+            send_request: "Kirim Permintaan",
+            withdrawal_fee_notice: "Biaya penarikan sebesar",
+
+            // Profile View
+            profile: "Profil",
+            refer_and_earn: "Referensikan & Hasilkan",
+            your_referral_link: "Tautan Referensi Anda:",
+            copy_link: "Salin Tautan",
+
+            // Footer
+            nav_home: "Beranda",
+            nav_earn: "Hasilkan",
+            nav_withdraw: "Tarik",
+            nav_profile: "Profil",
+
+            // Toasts & Alerts
+            toast_ad_loading: "Memuat iklan...",
+            toast_ad_failed: "Gagal menampilkan iklan.",
+            toast_limit_reached: "Limit untuk hari ini sudah tercapai.",
+            toast_bonus_claimed: "Selamat! Bonus harian telah diklaim.",
+            toast_copied: "Tautan disalin!",
+            toast_fill_all_fields: "Harap isi semua kolom.",
+            toast_min_withdrawal: "Penarikan minimum adalah",
+            toast_insufficient_balance: "Saldo tidak mencukupi.",
+            toast_request_sent: "Permintaan penarikan berhasil dikirim.",
+            toast_request_failed: "Gagal mengirim permintaan.",
+            toast_incorrect_password: "Incorrect Password!",
+            toast_banned: "Anda diblokir.",
+        };
+        // --- LANGUAGE STRINGS END ---
+
+        let tgUser, db, appConfig = {}, userProfile;
+        let adFunctions = {};
+
+        function loadAdSDKs(){
+            Object.keys(AD_ZONES).forEach(type => {
+                const zoneId = AD_ZONES[type];
+                if(!zoneId) return;
+                const script = document.createElement('script');
+                script.src = `//libtl.com/sdk.js`;
+                script.setAttribute('data-zone', zoneId);
+                script.setAttribute('data-sdk', `show_${zoneId}`);
+                document.head.appendChild(script);
+                adFunctions[type] = () => window[`show_${zoneId}`];
+            });
+        }
+        
+        function showToast(key, isError=false, replace=""){ const toast = document.getElementById('toast'); toast.textContent=LANG[key].replace('%s', replace); toast.style.backgroundColor=isError?'#FF3B30':'#28a745'; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'), 3000);}
+        function showView(id, link=null) { 
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active')); 
+            document.getElementById(`${id}-view`).classList.add('active'); 
+            if(link) document.getElementById('header-title').innerText = link.innerText; 
+            document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active-link')); 
+            if(link) link.classList.add('active-link'); 
+            if (window.innerWidth < 992) document.getElementById('sidebar').classList.remove('active'); 
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            Telegram.WebApp.ready(); Telegram.WebApp.expand();
+            tgUser = Telegram.WebApp.initDataUnsafe.user;
+            if(!tgUser){ document.getElementById('loader').innerText = "Please open from Telegram."; return; }
+            loadAdSDKs();
+            firebase.initializeApp(FIREBASE_CONFIG);
+            db = firebase.database();
+            loadInitialData();
+        });
+
+        function loadInitialData(){
+            document.querySelectorAll('[data-lang]').forEach(el => el.innerText = LANG[el.dataset.lang] || el.dataset.lang);
+            db.ref('config').on('value', snap => { appConfig = snap.val() || {}; document.getElementById('admin-marquee').innerText = appConfig.marqueeText || ""; });
+            db.ref('users/' + tgUser.id).on('value', snap => {
+                userProfile = { balanceUSD: 0, tasksDone: 0, dailyAdCounts: {}, referrals: 0, lastLogin: null, banned: false, ...snap.val() };
+                if(!snap.exists()){ db.ref('users/' + tgUser.id).set(userProfile); checkForReferrer(); }
+                if(userProfile.banned) { document.body.innerHTML = "<h1>You are banned.</h1>"; return; }
+                document.getElementById('loader').style.display = 'none'; document.querySelector('.container').style.display = 'flex';
+                updateUI();
+            });
+        }
+        
+        function updateUI(){
+            const balance = (userProfile.balanceUSD||0).toFixed(4);
+            const avatar = tgUser.photo_url || `https://ui-avatars.com/api/?name=${tgUser.first_name||'U'}`;
+            document.getElementById('header-avatar').src = avatar; document.getElementById('header-username').innerText = tgUser.first_name || "User"; document.getElementById('header-balance').innerText = `USDT ${balance}`;
+            
+            // Home View
+            document.getElementById('home-view').innerHTML = `<div class="card" style="text-align:center;"><img src="${avatar}" style="width:100px;height:100px;border-radius:50%;"><h2 style="margin:10px 0;">${LANG.home_welcome} ${tgUser.first_name}</h2><h1 style="font-size:42px;margin:10px 0;background:linear-gradient(45deg,var(--primary),var(--green));-webkit-background-clip:text;-webkit-text-fill-color:transparent;">USDT ${balance}</h1><button class="btn btn-primary" onclick="showView('earn')">${LANG.earn_now}</button></div>`;
+            
+            // Earn View
+            renderEarnView();
+            
+            // Withdraw View
+            document.getElementById('withdraw-view').innerHTML = `<div class="card"><h2>${LANG.withdraw_funds}</h2><p>${LANG.current_balance} <strong style="color:var(--green);">USDT ${balance}</strong></p><form id="withdraw-form" style="display:flex;flex-direction:column;gap:15px;"><div class="form-group"><label>${LANG.payment_method}</label><select id="withdrawal-method" required><option value="">${LANG.select_method}</option></select></div><div class="form-group"><label>${LANG.amount_usd}</label><input id="withdrawal-amount" type="number" step="0.01" required placeholder="${LANG.enter_amount}"></div><div class="form-group"><label>${LANG.wallet_address}</label><input id="wallet-address" required placeholder="${LANG.enter_wallet_address}"></div><p style="font-size:12px;text-align:center;">${LANG.withdrawal_fee_notice} ${WITHDRAWAL_SETTINGS.fee_percentage}%</p><button class="btn btn-primary" type="submit">${LANG.send_request}</button></form></div>`;
+            db.ref('paymentMethods').once('value', s => { const sel=document.getElementById('withdrawal-method'); if(sel) s.forEach(c=>sel.innerHTML+=`<option value="${c.val().name}">${c.val().name}</option>`); });
+            document.getElementById('withdraw-form')?.addEventListener('submit', handleWithdraw);
+
+            // Profile View
+            document.getElementById('profile-view').innerHTML = `<div class="card"><h2>${LANG.profile}</h2><p>${LANG.balance}: USDT ${balance}</p><p>${LANG.tasks_completed}: ${userProfile.tasksDone||0}</p><p>Referrals: ${userProfile.referrals||0}</p></div><div class="card"><h3>${LANG.refer_and_earn}</h3><p>${LANG.your_referral_link}</p><input style="width:100%;padding:10px;text-align:center;" value="https://t.me/${BOT_USERNAME.replace('@','')}?start=${tgUser.id}" readonly><button class="btn btn-primary" style="margin-top:10px;" onclick="copyLink(this)">${LANG.copy_link}</button></div>`;
+        }
+
+        function renderEarnView(){
+            const earnView = document.getElementById('earn-view'); earnView.innerHTML = `<h2>${LANG.task_center}</h2><p>${LANG.task_center_subtitle}</p>`;
+            const today = new Date().toISOString().slice(0, 10);
+            const dailyCounts = (userProfile.dailyAdCounts && userProfile.dailyAdCounts[today]) ? userProfile.dailyAdCounts[today] : {};
+
+            if(ENGAGEMENT_FEATURES.daily_bonus.enabled && userProfile.lastLogin !== today){
+                earnView.innerHTML += `<div class="task" onclick="claimDailyBonus()"><div class="icon-container"><i class="fas fa-gift"></i></div><div><h4>${LANG.daily_bonus_title}</h4><p>${LANG.daily_bonus_desc}</p></div></div>`;
+            }
+
+            Object.keys(AD_ZONES).forEach(type => {
+                const count = dailyCounts[type] || 0;
+                const limit = AD_LIMITS[type];
+                const task = document.createElement('div'); task.className = 'task';
+                task.innerHTML = `<div class="icon-container"><i class="fas ${type==='interstitial'?'fa-play-circle':'fa-window-maximize'}"></i></div><div><h4>${LANG[`${type}_task_title`]}</h4><p>${count}/${limit} ${LANG.interstitial_task_desc}</p></div>`;
+                if(count >= limit) task.setAttribute('disabled','true');
+                task.onclick = () => handleAdTask(task, type, appConfig[`${type}RewardUSD`] || 0.001);
+                earnView.appendChild(task);
+            });
+        }
+        
+        function handleAdTask(el, type, reward){
+            if(el.hasAttribute('disabled')){ showToast('toast_limit_reached', true); return; }
+            Telegram.WebApp.HapticFeedback.impactOccurred('light'); showToast('toast_ad_loading');
+            const showAd = adFunctions[type]();
+            if (typeof showAd !== 'function') { showToast('toast_ad_failed', true); return; } // Check if function exists
+            showAd(type==='popup'?'pop':undefined).then(()=>grantReward(type,reward)).catch(()=>showToast('toast_ad_failed',true));
+        }
+
+        function grantReward(type, reward){
+            const today = new Date().toISOString().slice(0,10);
+            db.ref('users/'+tgUser.id).transaction(p=>{ if(!p)return; p.balanceUSD=(p.balanceUSD||0)+reward; p.tasksDone=(p.tasksDone||0)+1; if(!p.dailyAdCounts) p.dailyAdCounts={}; if(!p.dailyAdCounts[today]) p.dailyAdCounts[today]={}; p.dailyAdCounts[today][type]=(p.dailyAdCounts[today][type]||0)+1; return p; });
+        }
+        
+        function claimDailyBonus(){
+            const today = new Date().toISOString().slice(0, 10);
+            db.ref('users/'+tgUser.id).transaction(p => { if(!p||p.lastLogin===today)return; p.balanceUSD=(p.balanceUSD||0)+ENGAGEMENT_FEATURES.daily_bonus.reward; p.lastLogin=today; return p; })
+            .then(res => { if(res.committed) showToast('toast_bonus_claimed'); });
+        }
+
+        function handleWithdraw(e){
+            e.preventDefault();
+            const amount = parseFloat(e.target.elements['withdrawal-amount'].value);
+            const fee = amount * (WITHDRAWAL_SETTINGS.fee_percentage/100);
+            const netAmount = amount - fee;
+            if(!e.target.elements['withdrawal-method'].value || !amount || !e.target.elements['wallet-address'].value.trim()){ showToast('toast_fill_all_fields',true); return; }
+            if(amount < (appConfig.minWithdrawUSD||1)){ showToast('toast_min_withdrawal', true, `$${appConfig.minWithdrawUSD||1}`); return; }
+            if(amount > userProfile.balanceUSD){ showToast('toast_insufficient_balance', true); return; }
+            const req = {userId:tgUser.id, username:tgUser.username||tgUser.first_name, amount:amount, fee, netAmount, paymentMethod:e.target.elements['withdrawal-method'].value, walletAddress:e.target.elements['wallet-address'].value.trim(), status:'pending', timestamp:firebase.database.ServerValue.TIMESTAMP};
+            db.ref('users/'+tgUser.id+'/balanceUSD').set(userProfile.balanceUSD - amount);
+            db.ref('withdrawal_requests').push(req).then(()=>showToast('toast_request_sent')).catch(()=>showToast('toast_request_failed',true));
+        }
+
+        function checkForReferrer(){
+            const startParam = new URLSearchParams(window.location.search).get('start');
+            if(startParam && ENGAGEMENT_FEATURES.referral_system.enabled){
+                db.ref('users/'+startParam).transaction(p=>{ if(!p)return; p.balanceUSD=(p.balanceUSD||0)+ENGAGEMENT_FEATURES.referral_system.reward_per_referral; p.referrals=(p.referrals||0)+1; return p;});
+            }
+        }
+        
+        function copyLink(el){ navigator.clipboard.writeText(`https://t.me/${BOT_USERNAME.replace('@','')}?start=${tgUser.id}`); showToast('toast_copied'); }
+    </script>
+</body>
+</html>
